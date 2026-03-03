@@ -229,9 +229,103 @@ function openSheet(s) {
 function closeSheet() {
   document.getElementById('sheet-backdrop').classList.remove('visible');
   const sheet = document.getElementById('detail-sheet');
+  sheet.style.transform = ''; // clear any drag offset so CSS transition takes over
   sheet.classList.remove('open');
   sheet.setAttribute('aria-hidden', 'true');
   state.activeShelter = null;
+}
+
+// ── Pull-to-dismiss sheet drag ───────────────────────────
+function initSheetDrag() {
+  const sheet    = document.getElementById('detail-sheet');
+  const grip     = document.querySelector('.sheet-grip');
+  const header   = document.getElementById('sheet-header');
+
+  let dragging   = false;
+  let startY     = 0;
+  let lastY      = 0;
+  let lastT      = 0;
+  let velocity   = 0; // px/ms, positive = downward
+
+  function isDesktop() { return window.innerWidth >= 600; }
+
+  // Read current translateY (strips any translateX on desktop)
+  function getY() {
+    const m = new DOMMatrix(window.getComputedStyle(sheet).transform);
+    return m.m42;
+  }
+
+  function setY(y) {
+    const clamped = Math.max(0, y); // can't drag above resting position
+    sheet.style.transform = isDesktop()
+      ? `translateX(-50%) translateY(${clamped}px)`
+      : `translateY(${clamped}px)`;
+  }
+
+  function onStart(y) {
+    dragging  = true;
+    startY    = y;
+    lastY     = y;
+    lastT     = performance.now();
+    velocity  = 0;
+    sheet.style.transition = 'none'; // disable animation during drag
+  }
+
+  function onMove(y) {
+    if (!dragging) return;
+    const now = performance.now();
+    const dt  = now - lastT;
+    if (dt > 0) velocity = (y - lastY) / dt;
+    lastY = y;
+    lastT = now;
+    setY(y - startY); // delta from start (resting position is 0)
+  }
+
+  function onEnd() {
+    if (!dragging) return;
+    dragging = false;
+    sheet.style.transition = ''; // re-enable CSS transition
+
+    const currentY = getY();
+    // Close if: dragged more than 80px down, OR fast downward flick
+    if (currentY > 80 || velocity > 0.4) {
+      closeSheet();
+    } else {
+      // Snap back to open
+      sheet.style.transform = isDesktop() ? 'translateX(-50%) translateY(0)' : 'translateY(0)';
+    }
+  }
+
+  // ── Touch (grip, header, or body-at-top scroll position)
+  sheet.addEventListener('touchstart', e => {
+    const target = e.target;
+    const isHandle = grip.contains(target) || header.contains(target);
+    const atTop    = sheet.scrollTop === 0;
+    if (isHandle || atTop) onStart(e.touches[0].clientY);
+  }, { passive: true });
+
+  sheet.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 0) e.preventDefault(); // block scroll when pulling down
+    onMove(e.touches[0].clientY);
+  }, { passive: false });
+
+  sheet.addEventListener('touchend',    () => onEnd(), { passive: true });
+  sheet.addEventListener('touchcancel', () => onEnd(), { passive: true });
+
+  // ── Mouse (grip + header only, for desktop testing)
+  [grip, header].forEach(el => {
+    el.style.cursor = 'grab';
+    el.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      onStart(e.clientY);
+      e.preventDefault();
+    });
+  });
+
+  document.addEventListener('mousemove', e => { if (dragging) onMove(e.clientY); });
+  document.addEventListener('mouseup',   ()  => { if (dragging) onEnd(); });
 }
 
 // ── Find Nearest ────────────────────────────────────────
@@ -395,6 +489,7 @@ function boot() {
   setFilter('all');
   initOffline();
   wire();
+  initSheetDrag();
   registerSW();
 }
 

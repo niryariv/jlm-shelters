@@ -533,10 +533,20 @@ body {
 #detail-sheet.open { transform: translateY(0); }
 
 .sheet-grip {
-  width: 36px; height: 4px;
+  width: 40px; height: 4px;
   background: var(--border-hi);
   border-radius: 2px;
-  margin: 12px auto 0;
+  margin: 10px auto 0;
+  /* Large invisible hit area for easy grabbing */
+  padding: 10px 24px;
+  box-sizing: content-box;
+  cursor: grab;
+  transition: background 0.15s;
+}
+.sheet-grip:active { cursor: grabbing; }
+#detail-sheet.open:hover .sheet-grip,
+#detail-sheet.open:focus-within .sheet-grip {
+  background: var(--text-3);
 }
 
 #sheet-header {
