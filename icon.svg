@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512">
+  <!-- Red shield background -->
+  <path d="M50 5 L90 20 L90 55 Q90 80 50 95 Q10 80 10 55 L10 20 Z" fill="#D32F2F"/>
+  <!-- Shield highlight -->
+  <path d="M50 10 L85 23 L85 55 Q85 77 50 90 Q48 89 46 88 Q75 75 75 55 L75 26 L50 14 Z" fill="#E53935" opacity="0.4"/>
+  <!-- White house/shelter symbol -->
+  <!-- Roof -->
+  <polygon points="50,30 30,48 70,48" fill="white"/>
+  <!-- House body -->
+  <rect x="35" y="48" width="30" height="22" rx="1" fill="white"/>
+  <!-- Door -->
+  <rect x="44" y="57" width="12" height="13" rx="1" fill="#D32F2F"/>
+  <!-- Window left -->
+  <rect x="37" y="52" width="7" height="7" rx="1" fill="#D32F2F"/>
+  <!-- Window right -->
+  <rect x="56" y="52" width="7" height="7" rx="1" fill="#D32F2F"/>
+  <!-- Underground indicator - horizontal lines below house -->
+  <line x1="35" y1="74" x2="65" y2="74" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="38" y1="79" x2="62" y2="79" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+</svg>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#D32F2F" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="מקלט" />
+  <meta name="description" content="מצאו את מקלט הבומב הקרוב ביותר בירושלים — Find the nearest bomb shelter in Jerusalem" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="מצאו מקלט — Jerusalem Shelter Finder" />
+  <meta property="og:description" content="Find the nearest bomb shelter in Jerusalem / מצאו את המקלט הקרוב ביותר בירושלים" />
+  <meta property="og:type" content="website" />
+
+  <title>מצאו מקלט | Find Shelter — Jerusalem</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="" />
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ── Emergency Banner ── -->
+  <div id="emergency-banner" role="alert" aria-live="polite">
+    <span class="pulse-dot" aria-hidden="true"></span>
+    <div class="banner-text">
+      <span class="banner-he">⚠️ 90 שניות להגיע למקלט</span>
+      <span class="banner-en">Jerusalem has 90 seconds to shelter</span>
+    </div>
+    <span class="pulse-dot" aria-hidden="true"></span>
+  </div>
+
+  <!-- ── Top Bar ── -->
+  <header id="top-bar" role="banner">
+    <div class="app-title">
+      <span class="app-title-he">מצאו מקלט</span>
+      <span class="app-title-en">Jerusalem Shelter Finder</span>
+    </div>
+    <span class="alert-badge" role="status" aria-label="24 מקלטים">24 מקלטים</span>
+  </header>
+
+  <!-- ── Offline Banner ── -->
+  <div id="offline-banner" role="status" aria-live="polite">
+    📵 אין חיבור לאינטרנט — הנתונים נטענו מהזיכרון / Offline — using cached data
+  </div>
+
+  <!-- ── Tabs ── -->
+  <nav id="tabs" role="tablist" aria-label="תצוגה">
+    <button class="tab-btn active" data-view="map" role="tab" aria-selected="true" aria-controls="map-view">
+      <span class="tab-icon" aria-hidden="true">🗺</span>
+      <span>מפה</span>
+    </button>
+    <button class="tab-btn" data-view="list" role="tab" aria-selected="false" aria-controls="list-view">
+      <span class="tab-icon" aria-hidden="true">📋</span>
+      <span>רשימה</span>
+    </button>
+  </nav>
+
+  <!-- ── Main Content ── -->
+  <main role="main">
+
+    <!-- ── CTA Button (always visible) ── -->
+    <section id="cta-section" aria-label="חיפוש מקלט קרוב">
+      <button id="find-nearest-btn" type="button" aria-label="מצא את מקלט הבומב הקרוב אליי">
+        <span class="btn-icon" aria-hidden="true">📍</span>
+        <div class="btn-text">
+          <span class="btn-text-he">מצא מקלט הקרוב אליי</span>
+          <span class="btn-text-en">Find Nearest Shelter</span>
+        </div>
+      </button>
+    </section>
+
+    <!-- ── Filter Chips ── -->
+    <section id="filters-section" aria-label="סינון מקלטים">
+      <div id="filter-chips" role="group" aria-label="סנן לפי סוג">
+        <button class="filter-chip active" data-filter="all" type="button">הכל</button>
+        <button class="filter-chip" data-filter="public" type="button">ציבורי</button>
+        <button class="filter-chip" data-filter="parking" type="button">חניון 🅿️</button>
+        <button class="filter-chip" data-filter="accessible" type="button">נגיש ♿</button>
+      </div>
+    </section>
+
+    <!-- ── Map View ── -->
+    <section id="map-view" class="active" role="tabpanel" aria-labelledby="tab-map">
+      <div id="map" role="application" aria-label="מפת מקלטים בירושלים"></div>
+    </section>
+
+    <!-- ── List View ── -->
+    <section id="list-view" role="tabpanel" aria-labelledby="tab-list">
+      <ul id="shelter-list" aria-label="רשימת מקלטים" style="list-style:none;"></ul>
+
+      <!-- Footer inside list view -->
+      <footer id="footer" role="contentinfo">
+        <strong>פרויקט קהילתי | Community project</strong><br />
+        לא שירות ממשלתי רשמי — Not an official government service.<br />
+        מקור נתונים: <a href="https://www.jerusalem.muni.il" target="_blank" rel="noopener noreferrer" style="color:inherit">jerusalem.muni.il</a>
+        &nbsp;|&nbsp; עדכון: פברואר 2026
+      </footer>
+    </section>
+
+  </main>
+
+  <!-- ── Shelter Detail Bottom Sheet ── -->
+  <div id="detail-backdrop" aria-hidden="true"></div>
+
+  <aside
+    id="detail-panel"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="panel-name"
+    aria-hidden="true"
+  >
+    <div class="panel-handle" aria-hidden="true"></div>
+
+    <div class="panel-header">
+      <div class="panel-title-block">
+        <h2 id="panel-name"></h2>
+        <div id="panel-name-en"></div>
+      </div>
+      <button id="panel-close" type="button" aria-label="סגור">✕</button>
+    </div>
+
+    <div class="panel-body">
+
+      <address class="panel-address">
+        <span class="panel-address-icon" aria-hidden="true">📍</span>
+        <div class="panel-address-text">
+          <div id="panel-address-he"></div>
+          <div id="panel-address-en"></div>
+        </div>
+      </address>
+
+      <div class="panel-badges" id="panel-badges" aria-label="פרטי מקלט"></div>
+
+      <div id="panel-distance" aria-live="polite"></div>
+
+      <div class="panel-nav-buttons">
+        <a
+          id="nav-waze"
+          href="#"
+          class="nav-btn nav-btn-waze"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="נווט ב-Waze"
+        >
+          <span class="nav-btn-icon" aria-hidden="true">🚗</span>
+          <span>Waze</span>
+        </a>
+        <a
+          id="nav-gmaps"
+          href="#"
+          class="nav-btn nav-btn-google"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="נווט ב-Google Maps"
+        >
+          <span class="nav-btn-icon" aria-hidden="true">🗺</span>
+          <span>Google Maps</span>
+        </a>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ── Leaflet JS ── -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WPgA="
+          crossorigin=""></script>
+
+  <!-- ── App (ES Module) ── -->
+  <script type="module" src="app.js"></script>
+
+  <!-- ── Inline: sync detail panel aria-hidden with open class ── -->
+  <script>
+    // Keep aria-hidden in sync with panel visibility (cannot do this from module easily)
+    const panel = document.getElementById('detail-panel');
+    const observer = new MutationObserver(() => {
+      const isOpen = panel.classList.contains('open');
+      panel.setAttribute('aria-hidden', String(!isOpen));
+    });
+    observer.observe(panel, { attributes: true, attributeFilter: ['class'] });
+  </script>
+
+</body>
+</html>
