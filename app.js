@@ -34,7 +34,9 @@ function fmtDist(km) {
 
 // ── Marker icons ────────────────────────────────────────
 function makeIcon(shelter, highlight = false) {
-  const color = shelter.type === 'parking' ? '#E53935' : '#42A5F5';
+  const color = shelter.type === 'parking' ? '#E53935'
+              : shelter.type === 'school'  ? '#66BB6A'
+              : '#42A5F5';
   const sz = highlight ? 18 : 13;
   const bw = highlight ? 3  : 2;
   return L.divIcon({
@@ -55,8 +57,12 @@ function makeIcon(shelter, highlight = false) {
 
 // ── Popup HTML ──────────────────────────────────────────
 function popupHTML(s) {
-  const typeLabel = s.type === 'parking' ? 'חניון מוגן' : 'מקלט ציבורי';
-  const typeCls   = s.type === 'parking' ? 'badge-parking' : 'badge-public';
+  const typeLabel = s.type === 'parking' ? 'חניון מוגן'
+                 : s.type === 'school'  ? 'בית ספר'
+                 : 'מקלט ציבורי';
+  const typeCls   = s.type === 'parking' ? 'badge-parking'
+                 : s.type === 'school'  ? 'badge-school'
+                 : 'badge-public';
   return `
     <div class="popup-inner">
       <div class="popup-name">${s.nameHe}</div>
@@ -111,8 +117,9 @@ function initMap() {
 function filtered() {
   return state.sorted.filter(s => {
     if (state.activeFilter === 'all')       return true;
-    if (state.activeFilter === 'public')    return s.type === 'public';
-    if (state.activeFilter === 'parking')   return s.type === 'parking';
+    if (state.activeFilter === 'public')     return s.type === 'public';
+    if (state.activeFilter === 'parking')    return s.type === 'parking';
+    if (state.activeFilter === 'school')     return s.type === 'school';
     if (state.activeFilter === 'accessible') return s.accessible;
     return true;
   });
@@ -144,7 +151,9 @@ function renderList() {
   }
 
   ul.innerHTML = list.map((s, i) => {
-    const pipCls  = s.type === 'parking' ? 'pip-parking' : 'pip-public';
+    const pipCls  = s.type === 'parking' ? 'pip-parking'
+                 : s.type === 'school'  ? 'pip-school'
+                 : 'pip-public';
     const distHtml = s._distance != null
       ? `<span class="dist-badge${i === 0 ? ' nearest' : ''}">${fmtDist(s._distance)}</span>`
       : '';
@@ -153,7 +162,7 @@ function renderList() {
         <span class="card-pip ${pipCls}"></span>
         <div class="card-body">
           <div class="card-name">${s.nameHe}</div>
-          <div class="card-addr">${s.addressHe}</div>
+          <div class="card-addr">${s.addressHe}${s.neighborhood ? ' · ' + s.neighborhood : ''}</div>
           ${s.accessible ? '<div class="card-access">♿</div>' : ''}
         </div>
         <div class="card-end">
@@ -186,8 +195,12 @@ function openSheet(s) {
   document.getElementById('sheet-addr-he').textContent = s.addressHe;
   document.getElementById('sheet-addr-en').textContent = s.address;
 
-  const typeLabel = s.type === 'parking' ? '🅿️ חניון מוגן' : '🏛 מקלט ציבורי';
-  const typeCls   = s.type === 'parking' ? 'badge-parking' : 'badge-public';
+  const typeLabel = s.type === 'parking' ? '🅿️ חניון מוגן'
+                 : s.type === 'school'  ? '🏫 בית ספר'
+                 : '🏛 מקלט ציבורי';
+  const typeCls   = s.type === 'parking' ? 'badge-parking'
+                 : s.type === 'school'  ? 'badge-school'
+                 : 'badge-public';
   document.getElementById('sheet-badges').innerHTML = `
     <span class="badge ${typeCls}">${typeLabel}</span>
     <span class="badge badge-capacity">👥 ${s.capacity}</span>

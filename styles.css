@@ -436,6 +436,7 @@ body {
 }
 .pip-parking { background: var(--red-hi); }
 .pip-public  { background: var(--blue-hi); }
+.pip-school  { background: #66BB6A; }
 
 .card-body { flex: 1; min-width: 0; }
 .card-name {
@@ -605,6 +606,7 @@ body {
 }
 .badge-parking  { background: rgba(198,40,40,0.15); color: #EF9A9A; border: 1px solid rgba(198,40,40,0.3); }
 .badge-public   { background: rgba(21,101,192,0.15); color: #90CAF9; border: 1px solid rgba(21,101,192,0.3); }
+.badge-school   { background: rgba(102,187,106,0.15); color: #A5D6A7; border: 1px solid rgba(102,187,106,0.3); }
 .badge-capacity { background: var(--surface-2); color: var(--text); border: 1px solid var(--border-hi); font-family: var(--font-mono); }
 .badge-access   { background: rgba(0,200,83,0.12); color: #69F0AE; border: 1px solid rgba(0,200,83,0.25); }
 .badge-noaccess { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
