@@ -1,4 +1,4 @@
-# מצאו מקלט — Jerusalem Shelter Finder
+# עיר מקלט — Jerusalem Shelter Finder
 
 A zero-cost static PWA that helps Jerusalem residents find the nearest public bomb shelter (מקלט) during an emergency.
 

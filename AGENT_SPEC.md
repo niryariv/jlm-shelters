@@ -344,7 +344,7 @@ Fetch strategy:
 
 ```json
 {
-  "name": "מצאו מקלט - Jerusalem Shelter Finder",
+  "name": "עיר מקלט - Jerusalem Shelter Finder",
   "short_name": "מקלט",
   "description": "Find the nearest bomb shelter in Jerusalem",
   "start_url": "./",
