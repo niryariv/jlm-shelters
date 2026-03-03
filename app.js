@@ -1,441 +1,373 @@
 /**
  * Jerusalem Shelter Finder — app.js
- * Pure ES-module, no build tools required.
+ * Pure ES module. No build tools.
  */
 
 import { shelters } from './data.js';
 
 // ── State ──────────────────────────────────────────────
 const state = {
-  map: null,
-  markers: {},          // id -> L.marker
-  userMarker: null,
-  userLatLng: null,     // { lat, lon }
-  activeFilter: 'all',  // 'all' | 'public' | 'parking' | 'accessible'
-  activeView: 'map',    // 'map' | 'list'
-  activeShelter: null,  // shelter object
-  sortedShelters: [...shelters],
+  map:            null,
+  markers:        {},       // id → L.marker
+  userMarker:     null,
+  userLatLon:     null,     // { lat, lon }
+  activeFilter:   'all',
+  activeView:     'map',
+  activeShelter:  null,
+  sorted:         [...shelters],
 };
 
-// ── Haversine distance (km) ────────────────────────────
+// ── Haversine distance (km) ─────────────────────────────
 function haversine(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const toRad = deg => deg * Math.PI / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-    Math.sin(dLon / 2) ** 2;
+  const R   = 6371;
+  const rad = d => d * Math.PI / 180;
+  const dLat = rad(lat2 - lat1);
+  const dLon = rad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2
+          + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function formatDistance(km) {
-  if (km < 1) return Math.round(km * 1000) + ' מ\'';
-  return km.toFixed(1) + ' ק"מ';
+function fmtDist(km) {
+  return km < 1 ? Math.round(km * 1000) + ' מ\'' : km.toFixed(1) + ' ק"מ';
 }
 
-// ── Marker color by type ───────────────────────────────
-function markerColor(shelter) {
-  if (shelter.type === 'parking') return '#D32F2F';
-  return '#1565C0';
-}
-
-// ── Create custom div icon ─────────────────────────────
-function createIcon(shelter, highlight = false) {
-  const color = markerColor(shelter);
-  const size = highlight ? 18 : 14;
-  const border = highlight ? 3 : 2;
+// ── Marker icons ────────────────────────────────────────
+function makeIcon(shelter, highlight = false) {
+  const color = shelter.type === 'parking' ? '#E53935' : '#42A5F5';
+  const sz = highlight ? 18 : 13;
+  const bw = highlight ? 3  : 2;
   return L.divIcon({
     className: '',
     html: `<div style="
-      width:${size}px;height:${size}px;
+      width:${sz}px;height:${sz}px;
       background:${color};
-      border:${border}px solid white;
+      border:${bw}px solid #fff;
       border-radius:50%;
-      box-shadow:0 2px 8px rgba(0,0,0,0.55);
+      box-shadow:0 2px 8px rgba(0,0,0,0.6);
       ${highlight ? 'animation:nearest-pulse 1.5s ease-in-out 3;' : ''}
     "></div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    popupAnchor: [0, -(size / 2 + 4)],
+    iconSize:    [sz, sz],
+    iconAnchor:  [sz / 2, sz / 2],
+    popupAnchor: [0, -(sz / 2 + 4)],
   });
 }
 
-// ── Build popup HTML ───────────────────────────────────
-function buildPopupHTML(shelter) {
-  const typeLabelHe = shelter.type === 'parking' ? 'חניון מוגן' : 'מקלט ציבורי';
-  const accessHe = shelter.accessible ? ' | ♿ נגיש' : '';
+// ── Popup HTML ──────────────────────────────────────────
+function popupHTML(s) {
+  const typeLabel = s.type === 'parking' ? 'חניון מוגן' : 'מקלט ציבורי';
+  const typeCls   = s.type === 'parking' ? 'badge-parking' : 'badge-public';
   return `
     <div class="popup-inner">
-      <div class="popup-name">${shelter.nameHe}</div>
-      <div class="popup-address">${shelter.addressHe}</div>
+      <div class="popup-name">${s.nameHe}</div>
+      <div class="popup-address">${s.addressHe}</div>
       <div class="popup-meta">
-        <span class="badge ${shelter.type === 'parking' ? 'badge-type-parking' : 'badge-type-public'}">${typeLabelHe}</span>
-        <span class="badge badge-capacity">👥 ${shelter.capacity}</span>
-        ${shelter.accessible ? '<span class="badge badge-accessible">♿</span>' : ''}
+        <span class="badge ${typeCls}">${typeLabel}</span>
+        <span class="badge badge-capacity">👥 ${s.capacity}</span>
+        ${s.accessible ? '<span class="badge badge-access">♿</span>' : ''}
       </div>
-      <button class="popup-open-detail" data-id="${shelter.id}">פרטים ונווט ›</button>
+      <button class="popup-open-detail" data-id="${s.id}">פרטים ונווט ›</button>
     </div>`;
 }
 
-// ── Init Map ───────────────────────────────────────────
+// ── Map init ────────────────────────────────────────────
 function initMap() {
   const map = L.map('map', {
-    center: [31.7683, 35.2137],
-    zoom: 13,
+    center:      [31.7683, 35.2137],
+    zoom:        13,
     zoomControl: true,
   });
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     maxZoom: 19,
   }).addTo(map);
 
   state.map = map;
 
-  // Add markers for all shelters
   shelters.forEach(s => {
-    const marker = L.marker([s.lat, s.lon], { icon: createIcon(s) });
-    marker.bindPopup(buildPopupHTML(s), {
-      maxWidth: 260,
-      closeButton: true,
-    });
-    marker.on('click', () => {
-      // Popup click is handled; also allow direct detail opening via popup button
-    });
-    marker.addTo(map);
-    state.markers[s.id] = marker;
+    const m = L.marker([s.lat, s.lon], { icon: makeIcon(s) });
+    m.bindPopup(popupHTML(s), { maxWidth: 270, closeButton: true });
+    m.addTo(map);
+    state.markers[s.id] = m;
   });
 
-  // Delegate popup button clicks (popups are in DOM after open)
-  map.on('popupopen', (e) => {
+  // Delegate popup button clicks
+  map.on('popupopen', e => {
     const btn = e.popup.getElement()?.querySelector('.popup-open-detail');
     if (btn) {
       btn.addEventListener('click', () => {
-        const shelter = shelters.find(s => s.id === btn.dataset.id);
-        if (shelter) openDetailPanel(shelter);
+        const s = shelters.find(x => x.id === btn.dataset.id);
+        if (s) openSheet(s);
       });
     }
   });
+
+  // Invalidate size after DOM is ready (fixes "grey tiles" on first render)
+  setTimeout(() => map.invalidateSize(), 100);
 }
 
-// ── Filter helpers ─────────────────────────────────────
-function filterShelters() {
-  return state.sortedShelters.filter(s => {
-    if (state.activeFilter === 'all') return true;
-    if (state.activeFilter === 'public') return s.type === 'public';
-    if (state.activeFilter === 'parking') return s.type === 'parking';
+// ── Filter helpers ──────────────────────────────────────
+function filtered() {
+  return state.sorted.filter(s => {
+    if (state.activeFilter === 'all')       return true;
+    if (state.activeFilter === 'public')    return s.type === 'public';
+    if (state.activeFilter === 'parking')   return s.type === 'parking';
     if (state.activeFilter === 'accessible') return s.accessible;
     return true;
   });
 }
 
-// ── Update marker visibility ───────────────────────────
-function updateMarkers() {
-  const visible = new Set(filterShelters().map(s => s.id));
+function syncMarkers() {
+  const visible = new Set(filtered().map(s => s.id));
   shelters.forEach(s => {
-    const marker = state.markers[s.id];
-    if (!marker) return;
-    if (visible.has(s.id)) {
-      if (!state.map.hasLayer(marker)) marker.addTo(state.map);
-    } else {
-      if (state.map.hasLayer(marker)) state.map.removeLayer(marker);
-    }
+    const m = state.markers[s.id];
+    if (!m) return;
+    if (visible.has(s.id)) { if (!state.map.hasLayer(m)) m.addTo(state.map); }
+    else                   { if (state.map.hasLayer(m))  state.map.removeLayer(m); }
   });
 }
 
-// ── Render list ────────────────────────────────────────
+// ── List rendering ──────────────────────────────────────
 function renderList() {
-  const list = document.getElementById('shelter-list');
-  const filtered = filterShelters();
+  const ul = document.getElementById('shelter-list');
+  const list = filtered();
 
-  if (filtered.length === 0) {
-    list.innerHTML = `
-      <div class="empty-state">
+  if (!list.length) {
+    ul.innerHTML = `
+      <li class="empty-state">
         <span class="empty-state-icon">🔍</span>
         <div class="empty-state-text">לא נמצאו מקלטים</div>
         <div class="empty-state-sub">נסה לשנות את הסינון</div>
-      </div>`;
+      </li>`;
     return;
   }
 
-  list.innerHTML = filtered.map((s, idx) => {
+  ul.innerHTML = list.map((s, i) => {
+    const pipCls  = s.type === 'parking' ? 'pip-parking' : 'pip-public';
     const distHtml = s._distance != null
-      ? `<span class="distance-badge ${idx === 0 && state.activeFilter !== 'parking' && state.activeFilter !== 'accessible' ? 'nearest' : ''}">${formatDistance(s._distance)}</span>`
+      ? `<span class="dist-badge${i === 0 ? ' nearest' : ''}">${fmtDist(s._distance)}</span>`
       : '';
-    const typeClass = s.type === 'parking' ? 'type-parking' : 'type-public';
-    const typeLabelHe = s.type === 'parking' ? 'חניון' : 'ציבורי';
     return `
-      <div class="shelter-card" data-id="${s.id}" tabindex="0" role="button" aria-label="${s.nameHe}">
-        <div class="card-dot ${typeClass}"></div>
+      <li class="shelter-card" data-id="${s.id}" tabindex="0" role="button" aria-label="${s.nameHe}">
+        <span class="card-pip ${pipCls}"></span>
         <div class="card-body">
           <div class="card-name">${s.nameHe}</div>
-          <div class="card-address">${s.addressHe}</div>
-          <div class="card-meta">
-            ${s.accessible ? '<span class="access-icon" title="נגיש לנכים">♿</span>' : ''}
-          </div>
+          <div class="card-addr">${s.addressHe}</div>
+          ${s.accessible ? '<div class="card-access">♿</div>' : ''}
         </div>
         <div class="card-end">
           ${distHtml}
-          <span class="chevron">›</span>
+          <span class="card-arrow" aria-hidden="true">›</span>
         </div>
-      </div>`;
+      </li>`;
   }).join('');
 
-  // Attach click listeners
-  list.querySelectorAll('.shelter-card').forEach(card => {
-    const handler = () => {
+  ul.querySelectorAll('.shelter-card').forEach(card => {
+    const go = () => {
       const s = shelters.find(x => x.id === card.dataset.id);
-      if (s) {
-        // Switch to map and show marker
-        setView('map');
-        openDetailPanel(s);
-        if (state.map) {
-          state.map.flyTo([s.lat, s.lon], 16, { duration: 0.8 });
-          const marker = state.markers[s.id];
-          if (marker) {
-            setTimeout(() => marker.openPopup(), 900);
-          }
-        }
-      }
+      if (!s) return;
+      switchView('map');
+      openSheet(s);
+      state.map.flyTo([s.lat, s.lon], 16, { duration: 0.7 });
+      setTimeout(() => state.markers[s.id]?.openPopup(), 800);
     };
-    card.addEventListener('click', handler);
-    card.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
-    });
+    card.addEventListener('click', go);
+    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
   });
 }
 
-// ── Detail Panel ───────────────────────────────────────
-function openDetailPanel(shelter) {
-  state.activeShelter = shelter;
+// ── Detail sheet ────────────────────────────────────────
+function openSheet(s) {
+  state.activeShelter = s;
 
-  document.getElementById('panel-name').textContent = shelter.nameHe;
-  document.getElementById('panel-name-en').textContent = shelter.name;
-  document.getElementById('panel-address-he').textContent = shelter.addressHe;
-  document.getElementById('panel-address-en').textContent = shelter.address;
+  document.getElementById('sheet-name').textContent    = s.nameHe;
+  document.getElementById('sheet-name-en').textContent = s.name;
+  document.getElementById('sheet-addr-he').textContent = s.addressHe;
+  document.getElementById('sheet-addr-en').textContent = s.address;
 
-  // Badges
-  const badgesEl = document.getElementById('panel-badges');
-  const typeLabelHe = shelter.type === 'parking' ? '🅿️ חניון מוגן' : '🏛 מקלט ציבורי';
-  const typeClass = shelter.type === 'parking' ? 'badge-type-parking' : 'badge-type-public';
-  badgesEl.innerHTML = `
-    <span class="badge ${typeClass}">${typeLabelHe}</span>
-    <span class="badge badge-capacity">👥 קיבולת: ${shelter.capacity}</span>
-    ${shelter.accessible
-      ? '<span class="badge badge-accessible">♿ נגיש לנכים</span>'
-      : '<span class="badge badge-not-accessible">נגישות מוגבלת</span>'
-    }`;
+  const typeLabel = s.type === 'parking' ? '🅿️ חניון מוגן' : '🏛 מקלט ציבורי';
+  const typeCls   = s.type === 'parking' ? 'badge-parking' : 'badge-public';
+  document.getElementById('sheet-badges').innerHTML = `
+    <span class="badge ${typeCls}">${typeLabel}</span>
+    <span class="badge badge-capacity">👥 ${s.capacity}</span>
+    ${s.accessible
+      ? '<span class="badge badge-access">♿ נגיש</span>'
+      : '<span class="badge badge-noaccess">נגישות מוגבלת</span>'}`;
 
-  // Distance
-  const distEl = document.getElementById('panel-distance');
-  if (shelter._distance != null) {
-    distEl.textContent = '';
-    distEl.innerHTML = `<span>📍</span><span>${formatDistance(shelter._distance)} ממיקומך</span>`;
+  const distEl = document.getElementById('sheet-distance');
+  if (s._distance != null) {
+    distEl.innerHTML = `<span>📍</span><span>${fmtDist(s._distance)} ממיקומך</span>`;
     distEl.classList.add('visible');
   } else {
     distEl.classList.remove('visible');
   }
 
-  // Navigation buttons
-  const wazeLink = document.getElementById('nav-waze');
-  const gMapsLink = document.getElementById('nav-gmaps');
-  wazeLink.href = `https://waze.com/ul?ll=${shelter.lat},${shelter.lon}&navigate=yes`;
-  gMapsLink.href = `https://maps.google.com/?q=${shelter.lat},${shelter.lon}&travelmode=walking`;
+  document.getElementById('nav-waze').href  = `https://waze.com/ul?ll=${s.lat},${s.lon}&navigate=yes`;
+  document.getElementById('nav-gmaps').href = `https://maps.google.com/?q=${s.lat},${s.lon}&travelmode=walking`;
 
-  // Open panel
-  document.getElementById('detail-backdrop').classList.add('visible');
-  document.getElementById('detail-panel').classList.add('open');
-  document.getElementById('panel-close').focus();
+  document.getElementById('sheet-backdrop').classList.add('visible');
+  const sheet = document.getElementById('detail-sheet');
+  sheet.classList.add('open');
+  sheet.setAttribute('aria-hidden', 'false');
+  document.getElementById('sheet-close').focus();
 }
 
-function closeDetailPanel() {
-  document.getElementById('detail-backdrop').classList.remove('visible');
-  document.getElementById('detail-panel').classList.remove('open');
+function closeSheet() {
+  document.getElementById('sheet-backdrop').classList.remove('visible');
+  const sheet = document.getElementById('detail-sheet');
+  sheet.classList.remove('open');
+  sheet.setAttribute('aria-hidden', 'true');
   state.activeShelter = null;
 }
 
-// ── Find Nearest ───────────────────────────────────────
+// ── Find Nearest ────────────────────────────────────────
 function findNearest() {
-  const btn = document.getElementById('find-nearest-btn');
-
+  const btn = document.getElementById('find-btn');
   if (!navigator.geolocation) {
     alert('הדפדפן שלך אינו תומך באיתור מיקום.\nYour browser does not support geolocation.');
     return;
   }
 
-  // Set loading state
   btn.disabled = true;
-  btn.innerHTML = `
-    <div class="loading-spinner"></div>
-    <div class="btn-text">
-      <span class="btn-text-he">מאתר מיקום...</span>
-      <span class="btn-text-en">Locating...</span>
-    </div>`;
+  btn.innerHTML = `<div class="loading-spinner"></div>
+    <span class="find-text-he">מאתר מיקום...</span>
+    <span class="find-text-en" dir="ltr">Locating...</span>`;
 
   navigator.geolocation.getCurrentPosition(
     pos => {
       const { latitude: lat, longitude: lon } = pos.coords;
-      state.userLatLng = { lat, lon };
+      state.userLatLon = { lat, lon };
 
-      // Calculate distances and sort
-      state.sortedShelters = shelters.map(s => ({
+      // Sort shelters by distance
+      state.sorted = shelters.map(s => ({
         ...s,
         _distance: haversine(lat, lon, s.lat, s.lon),
       })).sort((a, b) => a._distance - b._distance);
 
-      // Update user marker
+      // User location marker
       if (state.userMarker) state.map.removeLayer(state.userMarker);
-      const userIcon = L.divIcon({
-        className: '',
-        html: '<div class="marker-user"></div>',
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
+      state.userMarker = L.marker([lat, lon], {
+        icon: L.divIcon({
+          className: '',
+          html: '<div class="marker-user"></div>',
+          iconSize: [16, 16], iconAnchor: [8, 8],
+        }),
+        zIndexOffset: 1000,
       });
-      state.userMarker = L.marker([lat, lon], { icon: userIcon, zIndexOffset: 1000 });
       state.userMarker.bindTooltip('📍 מיקומך', { permanent: false, direction: 'top' });
       state.userMarker.addTo(state.map);
 
       // Highlight nearest
-      const nearest = state.sortedShelters[0];
+      const nearest = state.sorted[0];
       if (nearest && state.markers[nearest.id]) {
-        state.markers[nearest.id].setIcon(createIcon(nearest, true));
-        setTimeout(() => {
-          state.markers[nearest.id].setIcon(createIcon(nearest, false));
-        }, 4500);
+        state.markers[nearest.id].setIcon(makeIcon(nearest, true));
+        setTimeout(() => state.markers[nearest.id]?.setIcon(makeIcon(nearest, false)), 4500);
       }
 
-      // Fit map to show user + nearest shelter
+      // Fit map
       if (nearest) {
-        const bounds = L.latLngBounds([[lat, lon], [nearest.lat, nearest.lon]]);
-        state.map.fitBounds(bounds.pad(0.3), { maxZoom: 16 });
-        setTimeout(() => {
-          state.markers[nearest.id]?.openPopup();
-        }, 600);
+        state.map.fitBounds(
+          L.latLngBounds([[lat, lon], [nearest.lat, nearest.lon]]).pad(0.3),
+          { maxZoom: 16 }
+        );
+        setTimeout(() => state.markers[nearest.id]?.openPopup(), 600);
       }
 
-      // Update markers and re-render list
-      updateMarkers();
+      syncMarkers();
       if (state.activeView === 'list') renderList();
+      setTimeout(() => openSheet(nearest), 700);
 
-      // Show nearest detail after brief pause
-      setTimeout(() => openDetailPanel(nearest), 800);
-
-      // Restore button
+      const dist = fmtDist(nearest._distance);
       btn.disabled = false;
       btn.innerHTML = `
-        <span class="btn-icon">📍</span>
-        <div class="btn-text">
-          <span class="btn-text-he">מקלט הקרוב אליי</span>
-          <span class="btn-text-en">Nearest: ${formatDistance(nearest._distance)}</span>
-        </div>`;
+        <svg class="find-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="9" stroke-dasharray="4 2"/></svg>
+        <span class="find-text-he">קרוב: ${dist}</span>
+        <span class="find-text-en" dir="ltr">Nearest: ${dist}</span>`;
     },
     err => {
       btn.disabled = false;
       btn.innerHTML = `
-        <span class="btn-icon">📍</span>
-        <div class="btn-text">
-          <span class="btn-text-he">מצא מקלט הקרוב אליי</span>
-          <span class="btn-text-en">Find Nearest Shelter</span>
-        </div>`;
-
-      let msg = 'לא ניתן לאתר מיקום.\nCould not get location.';
-      if (err.code === err.PERMISSION_DENIED) {
-        msg = 'הגישה למיקום נדחתה. אנא אפשר גישה למיקום בהגדרות.\nLocation permission denied. Please enable in settings.';
-      } else if (err.code === err.TIMEOUT) {
-        msg = 'פסק הזמן לאיתור מיקום. נסה שוב.\nLocation timed out. Please try again.';
-      }
-      alert(msg);
+        <svg class="find-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="9" stroke-dasharray="4 2"/></svg>
+        <span class="find-text-he">מצא מקלט קרוב</span>
+        <span class="find-text-en" dir="ltr">Find Nearest</span>`;
+      const msgs = {
+        [err.PERMISSION_DENIED]: 'הגישה למיקום נדחתה — אנא אפשר גישה למיקום בהגדרות הדפדפן.',
+        [err.TIMEOUT]:           'פסק זמן לאיתור מיקום — נסה שוב.',
+      };
+      alert(msgs[err.code] || 'לא ניתן לאתר מיקום.');
     },
     { timeout: 12000, maximumAge: 30000, enableHighAccuracy: true }
   );
 }
 
-// ── Tab switching ──────────────────────────────────────
-function setView(view) {
+// ── View switching ──────────────────────────────────────
+function switchView(view) {
   state.activeView = view;
 
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.view === view);
+  document.querySelectorAll('.tab').forEach(t => {
+    const active = t.dataset.view === view;
+    t.classList.toggle('active', active);
+    t.setAttribute('aria-selected', String(active));
   });
 
-  const mapView = document.getElementById('map-view');
-  const listView = document.getElementById('list-view');
+  document.querySelectorAll('.view').forEach(v => {
+    v.classList.toggle('active', v.id === `view-${view}`);
+  });
 
   if (view === 'map') {
-    mapView.classList.add('active');
-    listView.classList.remove('active');
-    // Leaflet needs a resize event when shown after being hidden
-    setTimeout(() => state.map?.invalidateSize(), 50);
+    setTimeout(() => state.map?.invalidateSize(), 60);
   } else {
-    listView.classList.add('active');
-    mapView.classList.remove('active');
     renderList();
   }
 }
 
-// ── Filter chips ───────────────────────────────────────
-function setFilter(filter) {
-  state.activeFilter = filter;
-  document.querySelectorAll('.filter-chip').forEach(chip => {
-    chip.classList.toggle('active', chip.dataset.filter === filter);
-  });
-  updateMarkers();
+// ── Filter ──────────────────────────────────────────────
+function setFilter(f) {
+  state.activeFilter = f;
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.dataset.filter === f));
+  syncMarkers();
   if (state.activeView === 'list') renderList();
 }
 
-// ── Offline detection ──────────────────────────────────
-function initOfflineDetection() {
+// ── Offline detection ────────────────────────────────────
+function initOffline() {
   const banner = document.getElementById('offline-banner');
-  const update = () => {
-    banner.classList.toggle('visible', !navigator.onLine);
-  };
-  window.addEventListener('online', update);
+  const update = () => { banner.hidden = navigator.onLine; };
+  window.addEventListener('online',  update);
   window.addEventListener('offline', update);
   update();
 }
 
-// ── Service Worker ─────────────────────────────────────
+// ── Service Worker ───────────────────────────────────────
 function registerSW() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').then(reg => {
-      console.log('[SW] Registered, scope:', reg.scope);
-    }).catch(err => {
-      console.warn('[SW] Registration failed:', err);
-    });
+    navigator.serviceWorker.register('./sw.js')
+      .then(r => console.log('[SW] scope:', r.scope))
+      .catch(e => console.warn('[SW] failed:', e));
   }
 }
 
-// ── Event Listeners ────────────────────────────────────
-function initEventListeners() {
-  // Find nearest button
-  document.getElementById('find-nearest-btn').addEventListener('click', findNearest);
+// ── Event wiring ─────────────────────────────────────────
+function wire() {
+  document.getElementById('find-btn').addEventListener('click', findNearest);
 
-  // Tabs
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => setView(btn.dataset.view));
-  });
+  document.querySelectorAll('.tab').forEach(t =>
+    t.addEventListener('click', () => switchView(t.dataset.view)));
 
-  // Filter chips
-  document.querySelectorAll('.filter-chip').forEach(chip => {
-    chip.addEventListener('click', () => setFilter(chip.dataset.filter));
-  });
+  document.querySelectorAll('.chip').forEach(c =>
+    c.addEventListener('click', () => setFilter(c.dataset.filter)));
 
-  // Close detail panel
-  document.getElementById('panel-close').addEventListener('click', closeDetailPanel);
-  document.getElementById('detail-backdrop').addEventListener('click', closeDetailPanel);
+  document.getElementById('sheet-close').addEventListener('click', closeSheet);
+  document.getElementById('sheet-backdrop').addEventListener('click', closeSheet);
 
-  // Keyboard close
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && state.activeShelter) closeDetailPanel();
+    if (e.key === 'Escape' && state.activeShelter) closeSheet();
   });
 
-  // Waze / Google Maps — prefer Waze on mobile
-  document.getElementById('nav-waze').addEventListener('click', function(e) {
-    // On desktop, Waze deep-link won't work — fall back to web
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (!isMobile) {
+  // Waze: on desktop fall back to https://www.waze.com
+  document.getElementById('nav-waze').addEventListener('click', function (e) {
+    if (!/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
       e.preventDefault();
       const s = state.activeShelter;
       if (s) window.open(`https://www.waze.com/ul?ll=${s.lat},${s.lon}&navigate=yes`, '_blank');
@@ -443,19 +375,18 @@ function initEventListeners() {
   });
 }
 
-// ── Bootstrap ──────────────────────────────────────────
-function init() {
+// ── Boot ─────────────────────────────────────────────────
+function boot() {
   initMap();
-  setView('map');
+  switchView('map');
   setFilter('all');
-  initOfflineDetection();
-  initEventListeners();
+  initOffline();
+  wire();
   registerSW();
 }
 
-// Wait for DOM + Leaflet to be ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', boot);
 } else {
-  init();
+  boot();
 }

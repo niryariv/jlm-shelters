@@ -3,194 +3,143 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#D32F2F" />
+  <meta name="theme-color" content="#C62828" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="מקלט" />
-  <meta name="description" content="מצאו את מקלט הבומב הקרוב ביותר בירושלים — Find the nearest bomb shelter in Jerusalem" />
+  <meta name="description" content="מצאו את המקלט הקרוב ביותר בירושלים — Find the nearest bomb shelter in Jerusalem" />
+  <title>מצאו מקלט | Jerusalem Shelter Finder</title>
 
-  <!-- Open Graph -->
-  <meta property="og:title" content="מצאו מקלט — Jerusalem Shelter Finder" />
-  <meta property="og:description" content="Find the nearest bomb shelter in Jerusalem / מצאו את המקלט הקרוב ביותר בירושלים" />
-  <meta property="og:type" content="website" />
-
-  <title>מצאו מקלט | Find Shelter — Jerusalem</title>
-
-  <!-- PWA Manifest -->
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icon.svg" />
 
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-        crossorigin="" />
+  <!-- Google Fonts: Frank Ruhl Libre (Hebrew serif display) + Heebo (Hebrew UI) + Azeret Mono (distances) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;700;900&family=Heebo:wght@300;400;500;700;800&family=Azeret+Mono:wght@400;600&display=swap" rel="stylesheet" />
 
-  <!-- App Styles -->
+  <!-- Leaflet — NO integrity hash (avoids SRI blocking on CDN version mismatches) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-  <!-- ── Emergency Banner ── -->
-  <div id="emergency-banner" role="alert" aria-live="polite">
-    <span class="pulse-dot" aria-hidden="true"></span>
-    <div class="banner-text">
-      <span class="banner-he">⚠️ 90 שניות להגיע למקלט</span>
-      <span class="banner-en">Jerusalem has 90 seconds to shelter</span>
+  <!-- ── Chrome: fixed top bar ── -->
+  <div id="chrome">
+
+    <!-- Emergency ticker -->
+    <div id="emergency-banner" role="alert">
+      <span class="ticker-dot" aria-hidden="true"></span>
+      <span class="ticker-he">⚠ 90 שניות להגיע למקלט</span>
+      <span class="ticker-sep" aria-hidden="true">·</span>
+      <span class="ticker-en" dir="ltr">Jerusalem — 90 sec to shelter</span>
+      <span class="ticker-dot" aria-hidden="true"></span>
     </div>
-    <span class="pulse-dot" aria-hidden="true"></span>
-  </div>
 
-  <!-- ── Top Bar ── -->
-  <header id="top-bar" role="banner">
-    <div class="app-title">
-      <span class="app-title-he">מצאו מקלט</span>
-      <span class="app-title-en">Jerusalem Shelter Finder</span>
-    </div>
-    <span class="alert-badge" role="status" aria-label="24 מקלטים">24 מקלטים</span>
-  </header>
-
-  <!-- ── Offline Banner ── -->
-  <div id="offline-banner" role="status" aria-live="polite">
-    📵 אין חיבור לאינטרנט — הנתונים נטענו מהזיכרון / Offline — using cached data
-  </div>
-
-  <!-- ── Tabs ── -->
-  <nav id="tabs" role="tablist" aria-label="תצוגה">
-    <button class="tab-btn active" data-view="map" role="tab" aria-selected="true" aria-controls="map-view">
-      <span class="tab-icon" aria-hidden="true">🗺</span>
-      <span>מפה</span>
-    </button>
-    <button class="tab-btn" data-view="list" role="tab" aria-selected="false" aria-controls="list-view">
-      <span class="tab-icon" aria-hidden="true">📋</span>
-      <span>רשימה</span>
-    </button>
-  </nav>
-
-  <!-- ── Main Content ── -->
-  <main role="main">
-
-    <!-- ── CTA Button (always visible) ── -->
-    <section id="cta-section" aria-label="חיפוש מקלט קרוב">
-      <button id="find-nearest-btn" type="button" aria-label="מצא את מקלט הבומב הקרוב אליי">
-        <span class="btn-icon" aria-hidden="true">📍</span>
-        <div class="btn-text">
-          <span class="btn-text-he">מצא מקלט הקרוב אליי</span>
-          <span class="btn-text-en">Find Nearest Shelter</span>
-        </div>
-      </button>
-    </section>
-
-    <!-- ── Filter Chips ── -->
-    <section id="filters-section" aria-label="סינון מקלטים">
-      <div id="filter-chips" role="group" aria-label="סנן לפי סוג">
-        <button class="filter-chip active" data-filter="all" type="button">הכל</button>
-        <button class="filter-chip" data-filter="public" type="button">ציבורי</button>
-        <button class="filter-chip" data-filter="parking" type="button">חניון 🅿️</button>
-        <button class="filter-chip" data-filter="accessible" type="button">נגיש ♿</button>
+    <!-- App header -->
+    <header id="top-bar" role="banner">
+      <div id="app-brand">
+        <span id="brand-he">מצאו מקלט</span>
+        <span id="brand-en" dir="ltr">Jerusalem Shelter Finder</span>
       </div>
-    </section>
+      <div id="header-right">
+        <span id="count-badge" role="status" aria-live="polite">24 מקלטים</span>
+      </div>
+    </header>
 
-    <!-- ── Map View ── -->
-    <section id="map-view" class="active" role="tabpanel" aria-labelledby="tab-map">
+    <!-- Offline notice -->
+    <div id="offline-banner" role="status" aria-live="polite" hidden>
+      📵 מצב לא מקוון — הנתונים נטענו מהמטמון
+    </div>
+
+    <!-- Tab bar -->
+    <nav id="tab-bar" role="tablist" aria-label="תצוגה">
+      <button class="tab" data-view="map" role="tab" aria-selected="true" aria-controls="view-map" id="tab-map">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
+        מפה
+      </button>
+      <button class="tab" data-view="list" role="tab" aria-selected="false" aria-controls="view-list" id="tab-list">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        רשימה
+      </button>
+    </nav>
+
+    <!-- CTA + filters (always visible above views) -->
+    <div id="controls">
+      <button id="find-btn" type="button" aria-label="מצא את המקלט הקרוב אליי">
+        <svg class="find-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="9" stroke-dasharray="4 2"/></svg>
+        <span class="find-text-he">מצא מקלט קרוב</span>
+        <span class="find-text-en" dir="ltr">Find Nearest</span>
+      </button>
+
+      <div id="filter-row" role="group" aria-label="סנן לפי סוג">
+        <button class="chip active" data-filter="all">הכל</button>
+        <button class="chip" data-filter="public">ציבורי</button>
+        <button class="chip" data-filter="parking">חניון</button>
+        <button class="chip" data-filter="accessible">♿ נגיש</button>
+      </div>
+    </div>
+
+  </div><!-- /#chrome -->
+
+  <!-- ── Views ── -->
+  <main id="main-content">
+
+    <section id="view-map" class="view active" role="tabpanel" aria-labelledby="tab-map">
       <div id="map" role="application" aria-label="מפת מקלטים בירושלים"></div>
     </section>
 
-    <!-- ── List View ── -->
-    <section id="list-view" role="tabpanel" aria-labelledby="tab-list">
-      <ul id="shelter-list" aria-label="רשימת מקלטים" style="list-style:none;"></ul>
-
-      <!-- Footer inside list view -->
-      <footer id="footer" role="contentinfo">
-        <strong>פרויקט קהילתי | Community project</strong><br />
-        לא שירות ממשלתי רשמי — Not an official government service.<br />
-        מקור נתונים: <a href="https://www.jerusalem.muni.il" target="_blank" rel="noopener noreferrer" style="color:inherit">jerusalem.muni.il</a>
-        &nbsp;|&nbsp; עדכון: פברואר 2026
+    <section id="view-list" class="view" role="tabpanel" aria-labelledby="tab-list">
+      <ul id="shelter-list" aria-label="רשימת מקלטים"></ul>
+      <footer id="footer">
+        <strong>פרויקט קהילתי</strong> — לא שירות ממשלתי רשמי<br />
+        <span dir="ltr">Data: <a href="https://www.jerusalem.muni.il" target="_blank" rel="noopener">jerusalem.muni.il</a> · Updated Feb 2026</span>
       </footer>
     </section>
 
   </main>
 
-  <!-- ── Shelter Detail Bottom Sheet ── -->
-  <div id="detail-backdrop" aria-hidden="true"></div>
-
-  <aside
-    id="detail-panel"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="panel-name"
-    aria-hidden="true"
-  >
-    <div class="panel-handle" aria-hidden="true"></div>
-
-    <div class="panel-header">
-      <div class="panel-title-block">
-        <h2 id="panel-name"></h2>
-        <div id="panel-name-en"></div>
+  <!-- ── Detail Sheet ── -->
+  <div id="sheet-backdrop" aria-hidden="true"></div>
+  <aside id="detail-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-name" aria-hidden="true">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div id="sheet-header">
+      <div id="sheet-title">
+        <h2 id="sheet-name"></h2>
+        <div id="sheet-name-en" dir="ltr"></div>
       </div>
-      <button id="panel-close" type="button" aria-label="סגור">✕</button>
+      <button id="sheet-close" type="button" aria-label="סגור">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
-
-    <div class="panel-body">
-
-      <address class="panel-address">
-        <span class="panel-address-icon" aria-hidden="true">📍</span>
-        <div class="panel-address-text">
-          <div id="panel-address-he"></div>
-          <div id="panel-address-en"></div>
+    <div id="sheet-body">
+      <div id="sheet-address">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <div>
+          <div id="sheet-addr-he"></div>
+          <div id="sheet-addr-en" dir="ltr"></div>
         </div>
-      </address>
-
-      <div class="panel-badges" id="panel-badges" aria-label="פרטי מקלט"></div>
-
-      <div id="panel-distance" aria-live="polite"></div>
-
-      <div class="panel-nav-buttons">
-        <a
-          id="nav-waze"
-          href="#"
-          class="nav-btn nav-btn-waze"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="נווט ב-Waze"
-        >
-          <span class="nav-btn-icon" aria-hidden="true">🚗</span>
-          <span>Waze</span>
+      </div>
+      <div id="sheet-badges" aria-label="פרטי מקלט"></div>
+      <div id="sheet-distance" aria-live="polite"></div>
+      <div id="sheet-nav">
+        <a id="nav-waze" href="#" class="nav-btn waze" target="_blank" rel="noopener noreferrer">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.52 3.66 1.42 5.17L2.05 21.4l4.33-1.33A9.95 9.95 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm1 14.5h-2v-2h2v2zm0-4h-2V7h2v5.5z"/></svg>
+          Waze
         </a>
-        <a
-          id="nav-gmaps"
-          href="#"
-          class="nav-btn nav-btn-google"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="נווט ב-Google Maps"
-        >
-          <span class="nav-btn-icon" aria-hidden="true">🗺</span>
-          <span>Google Maps</span>
+        <a id="nav-gmaps" href="#" class="nav-btn gmaps" target="_blank" rel="noopener noreferrer">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/></svg>
+          Google Maps
         </a>
       </div>
-
     </div>
   </aside>
 
-  <!-- ── Leaflet JS ── -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WPgA="
-          crossorigin=""></script>
-
-  <!-- ── App (ES Module) ── -->
+  <!-- Leaflet JS — no integrity hash -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script type="module" src="app.js"></script>
-
-  <!-- ── Inline: sync detail panel aria-hidden with open class ── -->
-  <script>
-    // Keep aria-hidden in sync with panel visibility (cannot do this from module easily)
-    const panel = document.getElementById('detail-panel');
-    const observer = new MutationObserver(() => {
-      const isOpen = panel.classList.contains('open');
-      panel.setAttribute('aria-hidden', String(!isOpen));
-    });
-    observer.observe(panel, { attributes: true, attributeFilter: ['class'] });
-  </script>
 
 </body>
 </html>
