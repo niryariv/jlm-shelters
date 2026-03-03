@@ -6,10 +6,6 @@
 
 /* ── Tokens ── */
 :root {
-  /* Emergency — used ONLY for the top ticker */
-  --emergency:      #9B2E25;
-  --emergency-hi:   #B03328;
-
   /* Primary action — calm teal, not alarming red */
   --teal:           #3A8FA8;
   --teal-hi:        #4BA3BE;
@@ -46,11 +42,10 @@
   --ease:       0.18s ease;
 
   /* Layout heights (for flex math) */
-  --h-ticker:   36px;
   --h-header:   54px;
   --h-tabs:     44px;
   --h-controls: 106px; /* find-btn 52px + filter-row 38px + padding */
-  --h-chrome:   calc(var(--h-ticker) + var(--h-header) + var(--h-tabs) + var(--h-controls));
+  --h-chrome:   calc(var(--h-header) + var(--h-tabs) + var(--h-controls));
 }
 
 /* ── Reset ── */
@@ -81,53 +76,6 @@ body {
   flex-shrink: 0;
   z-index: 100;
 }
-
-/* ── Emergency ticker ── */
-#emergency-banner {
-  height: var(--h-ticker);
-  background: var(--emergency);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  font-family: var(--font-ui);
-  font-size: 12px;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: 0.03em;
-  overflow: hidden;
-  position: relative;
-}
-
-#emergency-banner::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.07) 50%, transparent 100%);
-  animation: sweep 4s ease-in-out infinite;
-}
-
-@keyframes sweep {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-.ticker-dot {
-  width: 8px;
-  height: 8px;
-  background: #fff;
-  border-radius: 50%;
-  flex-shrink: 0;
-  animation: blink 1.2s ease-in-out infinite;
-}
-@keyframes blink {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.4; transform: scale(0.7); }
-}
-
-.ticker-sep { opacity: 0.5; }
-.ticker-he  { font-size: 12.5px; }
-.ticker-en  { font-size: 11px; opacity: 0.9; }
 
 /* ── Header ── */
 #top-bar {
@@ -483,7 +431,7 @@ body {
   background: var(--surface-3);
   color: var(--text);
 }
-.dist-badge.nearest { background: rgba(107,170,138,0.15); color: var(--access-color); border: 1px solid rgba(107,170,138,0.3); }
+.dist-badge.nearest { background: color-mix(in srgb, var(--access-color) 15%, transparent); color: var(--access-color); border: 1px solid color-mix(in srgb, var(--access-color) 30%, transparent); }
 .card-arrow { color: var(--text-3); font-size: 16px; line-height: 1; }
 
 /* Empty state */
@@ -542,19 +490,27 @@ body {
 #detail-sheet.open { transform: translateY(0); }
 
 .sheet-grip {
-  width: 40px; height: 4px;
+  /* Large transparent hit target */
+  width: 88px;
+  height: 24px;
+  margin: 6px auto 0;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sheet-grip::before {
+  /* Visual pill only */
+  content: '';
+  width: 40px;
+  height: 4px;
   background: var(--border-hi);
   border-radius: 2px;
-  margin: 10px auto 0;
-  /* Large invisible hit area for easy grabbing */
-  padding: 10px 24px;
-  box-sizing: content-box;
-  cursor: grab;
   transition: background 0.15s;
 }
 .sheet-grip:active { cursor: grabbing; }
-#detail-sheet.open:hover .sheet-grip,
-#detail-sheet.open:focus-within .sheet-grip {
+#detail-sheet.open:hover .sheet-grip::before,
+#detail-sheet.open:focus-within .sheet-grip::before {
   background: var(--text-3);
 }
 
@@ -623,11 +579,11 @@ body {
   align-items: center;
   gap: 5px;
 }
-.badge-parking  { background: rgba(196,113,74,0.15); color: #D4917A; border: 1px solid rgba(196,113,74,0.3); }
-.badge-public   { background: rgba(91,158,201,0.15); color: #8BBDD6; border: 1px solid rgba(91,158,201,0.3); }
-.badge-school   { background: rgba(107,163,104,0.15); color: #91BC8E; border: 1px solid rgba(107,163,104,0.3); }
+.badge-parking  { background: color-mix(in srgb, var(--parking-color) 15%, transparent); color: #D4917A; border: 1px solid color-mix(in srgb, var(--parking-color) 30%, transparent); }
+.badge-public   { background: color-mix(in srgb, var(--public-color)  15%, transparent); color: #8BBDD6; border: 1px solid color-mix(in srgb, var(--public-color)  30%, transparent); }
+.badge-school   { background: color-mix(in srgb, var(--school-color)  15%, transparent); color: #91BC8E; border: 1px solid color-mix(in srgb, var(--school-color)  30%, transparent); }
 .badge-capacity { background: var(--surface-2); color: var(--text); border: 1px solid var(--border-hi); font-family: var(--font-mono); }
-.badge-access   { background: rgba(107,170,138,0.12); color: #8EC9AD; border: 1px solid rgba(107,170,138,0.25); }
+.badge-access   { background: color-mix(in srgb, var(--access-color)  12%, transparent); color: #8EC9AD; border: 1px solid color-mix(in srgb, var(--access-color) 25%, transparent); }
 .badge-noaccess { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
 
 #sheet-distance {

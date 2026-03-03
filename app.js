@@ -5,6 +5,12 @@
 
 import { shelters } from './data.js';
 
+// O(1) shelter lookup by id
+const sheltersById = new Map(shelters.map(s => [s.id, s]));
+
+// Cached divIcons — 3 types × 2 highlight states = 6 total
+const ICON_CACHE = {};
+
 // ── State ──────────────────────────────────────────────
 const state = {
   map:            null,
@@ -34,12 +40,15 @@ function fmtDist(km) {
 
 // ── Marker icons ────────────────────────────────────────
 function makeIcon(shelter, highlight = false) {
+  const key = `${shelter.type}-${highlight}`;
+  if (ICON_CACHE[key]) return ICON_CACHE[key];
+
   const color = shelter.type === 'parking' ? '#C4714A'
               : shelter.type === 'school'  ? '#6BA368'
               : '#5B9EC9';
   const sz = highlight ? 18 : 13;
   const bw = highlight ? 3  : 2;
-  return L.divIcon({
+  const icon = L.divIcon({
     className: '',
     html: `<div style="
       width:${sz}px;height:${sz}px;
@@ -53,6 +62,8 @@ function makeIcon(shelter, highlight = false) {
     iconAnchor:  [sz / 2, sz / 2],
     popupAnchor: [0, -(sz / 2 + 4)],
   });
+  ICON_CACHE[key] = icon;
+  return icon;
 }
 
 // ── Popup HTML ──────────────────────────────────────────
@@ -98,14 +109,14 @@ function initMap() {
     state.markers[s.id] = m;
   });
 
-  // Delegate popup button clicks
+  // Delegate popup button clicks — { once: true } prevents listener stacking on repeat opens
   map.on('popupopen', e => {
     const btn = e.popup.getElement()?.querySelector('.popup-open-detail');
     if (btn) {
       btn.addEventListener('click', () => {
-        const s = shelters.find(x => x.id === btn.dataset.id);
+        const s = sheltersById.get(btn.dataset.id);
         if (s) openSheet(s);
-      });
+      }, { once: true });
     }
   });
 
@@ -172,18 +183,19 @@ function renderList() {
       </li>`;
   }).join('');
 
-  ul.querySelectorAll('.shelter-card').forEach(card => {
-    const go = () => {
-      const s = shelters.find(x => x.id === card.dataset.id);
-      if (!s) return;
-      switchView('map');
-      openSheet(s);
-      state.map.flyTo([s.lat, s.lon], 16, { duration: 0.7 });
-      setTimeout(() => state.markers[s.id]?.openPopup(), 800);
-    };
-    card.addEventListener('click', go);
-    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
-  });
+}
+
+function goFromEvent(e) {
+  if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+  const card = e.target.closest('.shelter-card');
+  if (!card) return;
+  if (e.type === 'keydown') e.preventDefault();
+  const s = sheltersById.get(card.dataset.id);
+  if (!s) return;
+  switchView('map');
+  openSheet(s);
+  state.map.flyTo([s.lat, s.lon], 16, { duration: 0.7 });
+  setTimeout(() => state.markers[s.id]?.openPopup(), 800);
 }
 
 // ── Detail sheet ────────────────────────────────────────
@@ -467,6 +479,11 @@ function wire() {
 
   document.getElementById('sheet-close').addEventListener('click', closeSheet);
   document.getElementById('sheet-backdrop').addEventListener('click', closeSheet);
+
+  // List card clicks — delegated once here, not re-added on every renderList()
+  const ul = document.getElementById('shelter-list');
+  ul.addEventListener('click',   goFromEvent);
+  ul.addEventListener('keydown', goFromEvent);
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && state.activeShelter) closeSheet();
