@@ -1,31 +1,40 @@
 /* =============================================================
    Jerusalem Shelter Finder — styles.css
    Design: Frank Ruhl Libre (display) + Heebo (UI) + Azeret Mono (data)
-   Palette: deep navy bg · amber alert · emergency red · signal green
+   Palette: warm charcoal · cream text · teal action · brick emergency
    ============================================================= */
 
 /* ── Tokens ── */
 :root {
-  --red:        #C62828;
-  --red-hi:     #E53935;
-  --red-glow:   rgba(198,40,40,0.35);
-  --amber:      #F9A825;
-  --amber-hi:   #FFD54F;
-  --green:      #00C853;
-  --blue:       #1565C0;
-  --blue-hi:    #42A5F5;
+  /* Emergency — used ONLY for the top ticker */
+  --emergency:      #9B2E25;
+  --emergency-hi:   #B03328;
 
-  --bg:         #07080F;
-  --bg-2:       #0D1020;
-  --surface:    #141726;
-  --surface-2:  #1C2038;
-  --surface-3:  #252A45;
-  --border:     #252A45;
-  --border-hi:  #323860;
+  /* Primary action — calm teal, not alarming red */
+  --teal:           #3A8FA8;
+  --teal-hi:        #4BA3BE;
+  --teal-glow:      rgba(58,143,168,0.28);
+  --teal-subtle:    rgba(58,143,168,0.12);
 
-  --text:       #EEF0F8;
-  --text-2:     #8B90B0;
-  --text-3:     #4A5070;
+  /* Shelter type colors — readable but not harsh */
+  --parking-color:  #C4714A;   /* terracotta */
+  --public-color:   #5B9EC9;   /* soft blue   */
+  --school-color:   #6BA368;   /* sage green  */
+  --access-color:   #6BAA8A;   /* soft mint   */
+
+  /* Warm dark backgrounds */
+  --bg:         #1A1816;
+  --bg-2:       #201E1B;
+  --surface:    #272420;
+  --surface-2:  #302D29;
+  --surface-3:  #3A3733;
+  --border:     #3A3733;
+  --border-hi:  #4D4A45;
+
+  /* Warm cream text — contrast ratios against --bg: text ~11:1, text-2 ~5.5:1, text-3 ~3.4:1 */
+  --text:       #F0EBE3;
+  --text-2:     #BDB5AC;
+  --text-3:     #8A827A;
 
   --font-display: 'Frank Ruhl Libre', serif;
   --font-ui:      'Heebo', sans-serif;
@@ -76,7 +85,7 @@ body {
 /* ── Emergency ticker ── */
 #emergency-banner {
   height: var(--h-ticker);
-  background: var(--red);
+  background: var(--emergency);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -208,8 +217,8 @@ body {
 .tab:hover { background: rgba(255,255,255,0.03); color: var(--text); }
 
 .tab.active {
-  color: var(--amber);
-  border-bottom-color: var(--amber);
+  color: var(--teal-hi);
+  border-bottom-color: var(--teal);
 }
 
 /* ── Controls (CTA + filters) ── */
@@ -226,7 +235,7 @@ body {
 #find-btn {
   width: 100%;
   height: 50px;
-  background: var(--red);
+  background: var(--teal);
   color: #fff;
   border: none;
   border-radius: var(--r);
@@ -238,7 +247,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 9px;
-  box-shadow: 0 4px 20px var(--red-glow);
+  box-shadow: 0 4px 20px var(--teal-glow);
   transition: background var(--ease), box-shadow var(--ease), transform 0.1s;
   position: relative;
   overflow: hidden;
@@ -250,7 +259,7 @@ body {
   background: rgba(255,255,255,0);
   transition: background 0.1s;
 }
-#find-btn:hover { background: var(--red-hi); box-shadow: 0 6px 24px var(--red-glow); }
+#find-btn:hover { background: var(--teal-hi); box-shadow: 0 6px 24px var(--teal-glow); }
 #find-btn:active { transform: scale(0.98); }
 #find-btn:active::after { background: rgba(255,255,255,0.06); }
 #find-btn:disabled {
@@ -298,11 +307,11 @@ body {
   display: flex;
   align-items: center;
 }
-.chip:hover { border-color: var(--amber); color: var(--text); }
+.chip:hover { border-color: var(--teal); color: var(--text); }
 .chip.active {
-  background: rgba(249,168,37,0.12);
-  border-color: var(--amber);
-  color: var(--amber-hi);
+  background: var(--teal-subtle);
+  border-color: var(--teal);
+  color: var(--teal-hi);
 }
 
 /* ── Main content (flex: grows to fill remaining height) ── */
@@ -332,12 +341,12 @@ body {
   flex: 1;
   width: 100%;
   min-height: 0; /* allow flex shrink below content size */
-  background: #0D1525;
+  background: #13110F;
 }
 
 /* ── Leaflet overrides (dark theme) ── */
 .leaflet-container {
-  background: #0D1525 !important;
+  background: #13110F !important;
   font-family: var(--font-ui) !important;
 }
 
@@ -379,7 +388,7 @@ body {
 .popup-meta { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
 .popup-open-detail {
   width: 100%;
-  background: var(--red);
+  background: var(--teal);
   color: #fff;
   border: none;
   border-radius: var(--r-sm);
@@ -390,21 +399,21 @@ body {
   cursor: pointer;
   transition: background var(--ease);
 }
-.popup-open-detail:hover { background: var(--red-hi); }
+.popup-open-detail:hover { background: var(--teal-hi); }
 
 /* Marker user location */
 .marker-user {
-  background: var(--blue-hi);
+  background: var(--teal);
   width: 16px;
   height: 16px;
   border-radius: 50%;
   border: 3px solid #fff;
-  box-shadow: 0 0 0 4px rgba(66,165,245,0.3);
+  box-shadow: 0 0 0 4px var(--teal-glow);
   animation: user-ring 2s ease-in-out infinite;
 }
 @keyframes user-ring {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(66,165,245,0.3); }
-  50%       { box-shadow: 0 0 0 12px rgba(66,165,245,0); }
+  0%, 100% { box-shadow: 0 0 0 4px var(--teal-glow); }
+  50%       { box-shadow: 0 0 0 12px rgba(58,143,168,0); }
 }
 
 /* ── List view ── */
@@ -434,9 +443,9 @@ body {
   border-radius: 50%;
   flex-shrink: 0;
 }
-.pip-parking { background: var(--red-hi); }
-.pip-public  { background: var(--blue-hi); }
-.pip-school  { background: #66BB6A; }
+.pip-parking { background: var(--parking-color); }
+.pip-public  { background: var(--public-color); }
+.pip-school  { background: var(--school-color); }
 
 .card-body { flex: 1; min-width: 0; }
 .card-name {
@@ -474,7 +483,7 @@ body {
   background: var(--surface-3);
   color: var(--text);
 }
-.dist-badge.nearest { background: rgba(0,200,83,0.15); color: var(--green); border: 1px solid rgba(0,200,83,0.3); }
+.dist-badge.nearest { background: rgba(107,170,138,0.15); color: var(--access-color); border: 1px solid rgba(107,170,138,0.3); }
 .card-arrow { color: var(--text-3); font-size: 16px; line-height: 1; }
 
 /* Empty state */
@@ -614,18 +623,18 @@ body {
   align-items: center;
   gap: 5px;
 }
-.badge-parking  { background: rgba(198,40,40,0.15); color: #EF9A9A; border: 1px solid rgba(198,40,40,0.3); }
-.badge-public   { background: rgba(21,101,192,0.15); color: #90CAF9; border: 1px solid rgba(21,101,192,0.3); }
-.badge-school   { background: rgba(102,187,106,0.15); color: #A5D6A7; border: 1px solid rgba(102,187,106,0.3); }
+.badge-parking  { background: rgba(196,113,74,0.15); color: #D4917A; border: 1px solid rgba(196,113,74,0.3); }
+.badge-public   { background: rgba(91,158,201,0.15); color: #8BBDD6; border: 1px solid rgba(91,158,201,0.3); }
+.badge-school   { background: rgba(107,163,104,0.15); color: #91BC8E; border: 1px solid rgba(107,163,104,0.3); }
 .badge-capacity { background: var(--surface-2); color: var(--text); border: 1px solid var(--border-hi); font-family: var(--font-mono); }
-.badge-access   { background: rgba(0,200,83,0.12); color: #69F0AE; border: 1px solid rgba(0,200,83,0.25); }
+.badge-access   { background: rgba(107,170,138,0.12); color: #8EC9AD; border: 1px solid rgba(107,170,138,0.25); }
 .badge-noaccess { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
 
 #sheet-distance {
   font-family: var(--font-mono);
   font-size: 15px;
   font-weight: 600;
-  color: var(--green);
+  color: var(--access-color);
   margin-bottom: 16px;
   display: none;
   align-items: center;
@@ -668,7 +677,7 @@ body {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Focus ── */
-:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 4px; }
+:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: 4px; }
 button:focus-visible, a:focus-visible { border-radius: var(--r-sm); }
 
 /* ── Scrollbar ── */

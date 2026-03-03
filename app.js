@@ -34,9 +34,9 @@ function fmtDist(km) {
 
 // ── Marker icons ────────────────────────────────────────
 function makeIcon(shelter, highlight = false) {
-  const color = shelter.type === 'parking' ? '#E53935'
-              : shelter.type === 'school'  ? '#66BB6A'
-              : '#42A5F5';
+  const color = shelter.type === 'parking' ? '#C4714A'
+              : shelter.type === 'school'  ? '#6BA368'
+              : '#5B9EC9';
   const sz = highlight ? 18 : 13;
   const bw = highlight ? 3  : 2;
   return L.divIcon({
