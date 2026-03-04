@@ -2,10 +2,10 @@
   "name": "עיר מקלט - Jerusalem Shelter Finder",
   "short_name": "מקלט",
   "description": "Find the nearest bomb shelter in Jerusalem",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
-  "background_color": "#0F1117",
-  "theme_color": "#D32F2F",
+  "background_color": "#1A1816",
+  "theme_color": "#3A8FA8",
   "lang": "he",
   "dir": "rtl",
   "icons": [{"src": "icon.svg", "sizes": "any", "type": "image/svg+xml"}]

@@ -46,7 +46,6 @@ Requirements:
 
 ```
 #chrome                       ← flex-shrink:0, holds everything above the map
-  #emergency-banner           ← red ticker strip, "90 שניות להגיע למקלט"
   #top-bar (header)           ← app name + shelter count badge
   #offline-banner             ← hidden by default, shown when navigator.onLine=false
   #tab-bar (nav)              ← two tabs: מפה (map) and רשימה (list)
@@ -130,24 +129,31 @@ Leaflet's internal panes use z-index 200–700. Set accordingly:
 
 ```css
 :root {
-  --red:       #C62828;
-  --red-hi:    #E53935;
-  --amber:     #F9A825;
-  --amber-hi:  #FFD54F;
-  --green:     #00C853;
-  --blue-hi:   #42A5F5;
+  /* Primary action — calm teal */
+  --teal:          #3A8FA8;
+  --teal-hi:       #4BA3BE;
+  --teal-glow:     rgba(58,143,168,0.28);
+  --teal-subtle:   rgba(58,143,168,0.12);
 
-  --bg:        #07080F;
-  --bg-2:      #0D1020;
-  --surface:   #141726;
-  --surface-2: #1C2038;
-  --surface-3: #252A45;
-  --border:    #252A45;
-  --border-hi: #323860;
+  /* Shelter type colors */
+  --parking-color: #C4714A;   /* terracotta */
+  --public-color:  #5B9EC9;   /* soft blue   */
+  --school-color:  #6BA368;   /* sage green  */
+  --access-color:  #6BAA8A;   /* soft mint   */
 
-  --text:      #EEF0F8;
-  --text-2:    #8B90B0;
-  --text-3:    #4A5070;
+  /* Warm dark backgrounds */
+  --bg:        #1A1816;
+  --bg-2:      #201E1B;
+  --surface:   #272420;
+  --surface-2: #302D29;
+  --surface-3: #3A3733;
+  --border:    #3A3733;
+  --border-hi: #4D4A45;
+
+  /* Warm cream text */
+  --text:      #F0EBE3;
+  --text-2:    #BDB5AC;
+  --text-3:    #8A827A;
 
   --font-display: 'Frank Ruhl Libre', serif;
   --font-ui:      'Heebo', sans-serif;
@@ -186,15 +192,24 @@ On desktop (≥600px):
 ```
 
 ### Marker colors (Leaflet divIcon circles)
-- Public shelter: `#42A5F5` (blue)
-- Protected parking: `#E53935` (red)
-- School shelter: `#66BB6A` (green)
+- Public shelter: `#5B9EC9` (soft blue — matches `--public-color`)
+- Protected parking: `#C4714A` (terracotta — matches `--parking-color`)
+- School shelter: `#6BA368` (sage green — matches `--school-color`)
 
 ---
 
 ## app.js
 
 ES module. Imports `{ shelters }` from `./data.js`.
+
+At module level, before any functions:
+```js
+// O(1) shelter lookup
+const sheltersById = new Map(shelters.map(s => [s.id, s]));
+
+// Cache 6 icons (3 types × 2 highlight states) — avoids per-render allocation
+const ICON_CACHE = {};
+```
 
 ### Key functions
 
@@ -203,7 +218,7 @@ ES module. Imports `{ shelters }` from `./data.js`.
 - OpenStreetMap tile layer: `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`
 - Create a `L.divIcon` circle marker for each shelter (color by type, 13px default, 18px highlighted)
 - Bind popup with shelter name, address, type badge, capacity, and a "פרטים ונווט ›" button
-- On `popupopen`: delegate click on `.popup-open-detail` to `openSheet(shelter)`
+- On `popupopen`: delegate click on `.popup-open-detail` to `openSheet(shelter)` — use `{ once: true }` to prevent listener stacking if the same popup is opened multiple times
 - Call `map.invalidateSize()` after a 100ms timeout (fixes grey tiles on first render)
 
 **`haversine(lat1, lon1, lat2, lon2)`** → distance in km
@@ -349,8 +364,8 @@ Fetch strategy:
   "description": "Find the nearest bomb shelter in Jerusalem",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#07080F",
-  "theme_color": "#C62828",
+  "background_color": "#1A1816",
+  "theme_color": "#3A8FA8",
   "lang": "he",
   "dir": "rtl",
   "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
@@ -403,3 +418,6 @@ Live at `https://MY_USERNAME.github.io/MY_REPO_NAME/` in ~30 seconds. Cost: $0/m
 | Service worker breaks on GitHub Pages | Use `self.registration.scope` prefix, not `/` absolute paths |
 | Drag + desktop centering breaks | On desktop use `translateX(-50%) translateY(Ypx)` together, not just `translateY` |
 | RTL layout breaks map controls | Leaflet controls are LTR; do not set `direction: rtl` on `.leaflet-container` |
+| Popup "details" button fires multiple times | `popupopen` fires on every open; use `{ once: true }` on the listener to prevent stacking |
+| List card listeners multiply on filter change | Wire click/keydown delegation once on `#shelter-list` parent at boot, not inside `renderList()` |
+| Drag grip renders as wide rectangle | Hit-area padding expands the element background; use a transparent container + `::before` pseudo-element for the visual pill |
